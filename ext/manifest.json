@@ -1,0 +1,45 @@
+{
+  "name": "no comment.",
+  "version": "0.0.1",
+  "manifest_version": 2,
+  "description": "An extension for hiding most comment sections.",
+  "default_locale": "en",
+  "options_page": "src/options/index.html",
+  "browser_action": {
+    "default_icon": {
+      "19": "icons/icon19.png",
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title":"no comment."
+  },
+  "background": {
+    "scripts": ["src/background.js"],
+    "persistent": false
+  },
+  "web_accessible_resources": [
+    "src/watch_list.json"
+  ],
+  "content_scripts": [{
+    "matches": [
+      "http://*/*",
+      "https://*/*"
+    ],
+    "css": [
+      "src/inject/inject.css"
+    ],
+    "js": [
+      "src/inject/page.js"
+    ],
+    "run_at": "document_end"
+  }],
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "http://*/",
+    "https://*/",
+     "webNavigation"
+  ]
+}
