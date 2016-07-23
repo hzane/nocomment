@@ -52,7 +52,7 @@ main.page_start = function(){
 	main.status = 'hide';
 	main.uid = Math.random().toString(36).slice(2);
 	chrome.runtime.sendMessage({cmd:'getfilters'}, function(res){
-		main.filters = res.split(',');
+		main.filters = typeof res === 'array' ? res.split(',') : [];
 		var matches = main.sync_site();
 		if(matches){
 			main[main.status]();
