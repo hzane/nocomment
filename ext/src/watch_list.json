@@ -20,5 +20,6 @@
 {"site":"buzzfeed","selector":"#fb_comments_control"},
 {"site":"gawker","selector":"#js_discussion-region"},
 {"site":"theguardian","selector":"#comments"},
-{"site":"facebook","selector":".commentable_item"}
+{"site":"facebook","selector":".commentable_item"},
+{"site":"imgur","selector":".comments-container"}
 ]

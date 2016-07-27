@@ -1,12 +1,24 @@
+"use strict";
 (function(){
-
-/*******************************/
+/*************************************
+## no comment background script
+* retrieves watch list
+* get filters from localstorage
+* add listeners:
+	button click
+	tabs event
+		update, activate, removed
+	page request
+* on button press toggle icon send page request
+* tab updates apply local var if possible
+* toggles png's: active, disabled, icon19
+*************************************/
 
 var watch_list = [], filter_name = 'filter_list';
 var next = function(){
 	chrome.browserAction.onClicked.addListener(handleButtonPress);
-	chrome.tabs.onUpdated.addListener(handleTabsUpdate);
-	chrome.tabs.onActivated.addListener(handleNewTabs);
+	chrome.tabs.onUpdated.addListener(handleTabs);
+	chrome.tabs.onActivated.addListener(handleTabs);
 	chrome.tabs.onRemoved.addListener(handleClosedTab);
 	chrome.runtime.onMessage.addListener(messageHandler);
 };
@@ -16,13 +28,7 @@ loadWatchList(next);
 /*******************************/
 function messageHandler(request, sender, sendResponse) {
 		if(typeof request === 'object'){
-			if(request.cmd === 'getfilters'){
-				sendResponse(localStorage.getItem(filter_name));
-				return true;
-			}else{
-				chrome.browserAction.setIcon({path:"icons/"+request.cmd+".png"});	
-			}
-			
+			chrome.browserAction.setIcon({path:"icons/"+request.cmd+".png"});
 		}
 }
 function loadWatchList(callback){
@@ -47,46 +53,27 @@ function handleButtonPress(){
 }
 /*******************************/
 function handleClosedTab(tabId, changeInfo, tab){
-	console.log('closing!!!  !!!!  !!!!');
-	console.log(tabId.toString());
 	chrome.storage.local.remove(tabId.toString());
 }
 /******************************/
-function handleNewTabs(tabId, changeInfo, tab){
+function handleTabs(tabId, changeInfo, tab){
 	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
-	var tabs_list = {};
+	var tabKey = isNaN(tabId) ? tabId.tabId.toString() : tabId.toString();
 		if(check(tabs)){
-			console.log("1");
-			tabs_list[tabId.tabId] = 'active';
-			chrome.browserAction.setIcon({path:"icons/active.png"});
-			chrome.storage.local.set(tabs_list);
+		chrome.storage.local.get(tabKey, function(res){
+			if(typeof res[tabKey] === 'undefined'){
+				var tabs_list = {};
+				tabs_list[tabKey] = 'active';
+				chrome.browserAction.setIcon({path:"icons/active.png"});
+				chrome.storage.local.set(tabs_list);
+				chrome.tabs.executeScript(tabId.tabId, {file: "/src/inject/page.js"});
+			}else{
+				chrome.browserAction.setIcon({path:"icons/"+res[tabKey]+".png"});
+			}
+		});
 		}else{
-			console.log("1.2");
 			chrome.browserAction.setIcon({path:"icons/icon19.png"});
-			chrome.storage.local.remove(tabId.tabId.toString());
-		}
-	});
-}
-/******************************/
-function handleTabsUpdate(tabId, changeInfo, tab){
-	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
-		if(check(tabs)){
-			console.log("2");
-			chrome.storage.local.get(tabId.toString(), function(res){
-				if(typeof res[tabId.toString()] === 'undefined'){
-					var tabs_list = {};
-					tabs_list[tabId.tabId] = 'active';
-					chrome.browserAction.setIcon({path:"icons/active.png"});
-					chrome.storage.local.set(tabs_list);
-				}else{
-					chrome.browserAction.setIcon({path:"icons/"+res[tabId.toString()]+".png"});
-				}
-			});
-		}else{
-			console.log("2.2");
-			chrome.browserAction.setIcon({path:"icons/icon19.png"});
-			console.log(tabId);
-			chrome.storage.local.remove(tabId.toString());
+			chrome.storage.local.remove(tabKey.toString());
 		}
 	});
 }

@@ -15,6 +15,7 @@ var sites = ["youtube.com",
 			"npr.org",
 			"washingtonpost.com",
 			"buzzfeed.com",
+			"imgur.com",
 			"gawker.com",
 			"theguardian.com"];
 

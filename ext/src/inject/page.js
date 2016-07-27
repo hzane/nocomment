@@ -1,13 +1,12 @@
-
+"use strict";
 (function(){
-/*************************************/
 
 	chrome.runtime.onMessage.addListener(function(request, sender, callback){
+		console.log("ding");
+		console.log(request);
 		main[request.cmd](callback);
 	    return true;
 	});
-
-/*************************************/
 
 	var readyStateCheckInterval = setInterval(function() {
 		if (document.readyState === "complete") {
@@ -16,7 +15,14 @@
 		}
 	}, 100);
 
-/*************************************/
+/*************************************
+## main obj literal
+* retrieves watch list
+* generates CSS file 
+* attach or removes css
+* listen for toggle request
+* send icon command in response
+*************************************/
 
 var main = {
 	watch_list:{},
@@ -51,13 +57,10 @@ main.page_start = function(){
 	/* status == default hide || show ***********/
 	main.status = 'hide';
 	main.uid = Math.random().toString(36).slice(2);
-	chrome.runtime.sendMessage({cmd:'getfilters'}, function(res){
-		main.filters = typeof res === 'array' ? res.split(',') : [];
-		var matches = main.sync_site();
-		if(matches){
-			main[main.status]();
-		}
-	});
+	var matches = main.sync_site();
+	if(matches){
+		main[main.status]();
+	}
 }
 main.sync_site = function(){
 	var current_page = main.current_page, key = 'site';
@@ -124,40 +127,6 @@ main.show = function(callback){
 		callback({cmd:val});
 	}
 }
-main.page_update = function(){}
-main.extension_listener = function(command){}
-main.extension_broadcast = function(status){}
 
-/*
-extension_listener(string command)
-	executes main with command
-
-extension_broadcast(string status)
-	sends message to background
-
-page_start()
-	load remote map
-	check local for page status
-	generate spreadsheet save
-	execute main with status or hide
-
-page_update()
-	execute main with status
-
-sync_site(string current site)
-	returns obj of rules where site match
-
-hide(string class name)
-	sets local.status
-
-show(string class name)
-	sets status
-	select elms
-	loop elms 
-*/
-
-
-
-
-})()
+})();
 
