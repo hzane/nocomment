@@ -1,6 +1,6 @@
 [
-{"site":"localhost","selector":".msg-box"},
-{"site":"youtube","selector":"#watch-discussion"},
+{"site":"localhost/dev.html","selector":".msg-box"},
+{"site":"youtube.com/watch","selector":"#watch-discussion"},
 {"site":"huffingtonpost","selector":".comment-button"},
 {"site":"huffingtonpost","selector":".js-entry-comments"},
 {"site":"huffingtonpost","selector":"#comments"},
@@ -21,5 +21,8 @@
 {"site":"gawker","selector":"#js_discussion-region"},
 {"site":"theguardian","selector":"#comments"},
 {"site":"facebook","selector":".commentable_item"},
-{"site":"imgur","selector":".comments-container"}
+{"site":"imgur","selector":".comments-container"},
+{"site":"reddit","selector":"a.comments"},
+{"site":"reddit","selector":".commentarea"},
+{"site":"instagram","selector":"._es1du._rgrbt"}
 ]

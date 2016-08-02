@@ -14,7 +14,7 @@
 * toggles png's: active, disabled, icon19
 *************************************/
 
-var watch_list = [], filter_name = 'filter_list';
+var watch_list = [], filter_name = 'filter_list', known_tabs=[], buffer=false;
 var next = function(){
 	chrome.browserAction.onClicked.addListener(handleButtonPress);
 	chrome.tabs.onUpdated.addListener(handleTabs);
@@ -46,55 +46,76 @@ function loadWatchList(callback){
 /*******************************/
 function handleButtonPress(){
 	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
-		if(check(tabs)){
-			toggle(tabs);
+		if(isWatched(tabs[0])){
+			toggle(tabs[0]);
 		}
 	});
 }
 /*******************************/
 function handleClosedTab(tabId, changeInfo, tab){
-	chrome.storage.local.remove(tabId.toString());
+	delete known_tabs[tabId.toString()];
 }
 /******************************/
 function handleTabs(tabId, changeInfo, tab){
-	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
 	var tabKey = isNaN(tabId) ? tabId.tabId.toString() : tabId.toString();
-		if(check(tabs)){
-		chrome.storage.local.get(tabKey, function(res){
-			if(typeof res[tabKey] === 'undefined'){
-				var tabs_list = {};
-				tabs_list[tabKey] = 'active';
-				chrome.browserAction.setIcon({path:"icons/active.png"});
-				chrome.storage.local.set(tabs_list);
-				chrome.tabs.executeScript(tabId.tabId, {file: "/src/inject/page.js"});
-			}else{
-				chrome.browserAction.setIcon({path:"icons/"+res[tabKey]+".png"});
+	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
+		if(isWatched(tabs[0])){
+			if(typeof changeInfo==='object' && changeInfo.status==='complete'){
+				if(!buffer){
+					buffer = true;
+					//todo - more efficient way to only execute once
+					chrome.tabs.sendMessage(tab.id, {cmd:'ping'}, function(res){
+						buffer = false;
+						if(res !== 'ping'){
+							console.log("injecting script");
+							chrome.tabs.executeScript(tabId.tabId, {file: "/src/inject/page.js"}, tabCheck);
+						}else{
+							tabCheck();
+						}
+					});
+				}
 			}
-		});
+		/********************************/
+		function tabCheck(){
+			if(typeof known_tabs[tabKey] === 'string'){
+				var tabStatus = known_tabs[tabKey];
+				chrome.browserAction.setIcon({path:"icons/"+tabStatus+".png"});
+			}else{
+				chrome.browserAction.setIcon({path:"icons/active.png"});
+				var tabStatus = 'active';
+				known_tabs[tabKey] =  'active';
+			}
+			//chrome.tabs.sendMessage(tab.id, {cmd:tabStatus});
+		}
+
+			/********************************/
+
 		}else{
+			delete known_tabs[tabId.toString()];
 			chrome.browserAction.setIcon({path:"icons/icon19.png"});
-			chrome.storage.local.remove(tabKey.toString());
+		}
+
+	});
+}
+/*******************************/
+function toggle(tab){
+	var tabKey = tab.id.toString();
+	var status = known_tabs[tabKey];
+	var cmd = status === 'active' ? 'disabled' : 'active';
+	known_tabs[tabKey] = cmd;
+	chrome.browserAction.setIcon({path:"icons/"+cmd+".png"});
+	chrome.tabs.sendMessage(tab.id, {cmd:cmd}, function(res){
+		if(typeof res !== 'undefined'){
+			console.log(res);
 		}
 	});
 }
 /*******************************/
-function toggle(tabs){
-	chrome.tabs.sendMessage(tabs[0].id, {cmd:'toggle'}, function(res){
-		if(typeof res === 'object'){
-			var tabs_list = {};
-			tabs_list[tabs[0].id] = res.cmd;
-			chrome.storage.local.set(tabs_list);
-			chrome.browserAction.setIcon({path:"icons/"+res.cmd+".png"});
-		}
-	});
-		
-}
-/*******************************/
-function check(obj){
+function isWatched(obj){
 	try{
 		var filter_list = localStorage.getItem(filter_name) || '';
 		var filters = filter_list.split(',');
-		var url = obj[0].url;
+		var url = obj.url;
 		for(var i in watch_list){
 			if(url.indexOf(watch_list[i].site) > -1){
 				if(!filter(watch_list[i].site, filters)){
@@ -116,5 +137,8 @@ function check(obj){
 	}
 
 }
+/*******************************/
+
+
 })();
 

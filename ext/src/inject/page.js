@@ -1,28 +1,26 @@
 "use strict";
 (function(){
-
-	chrome.runtime.onMessage.addListener(function(request, sender, callback){
-		console.log("ding");
-		console.log(request);
-		main[request.cmd](callback);
-	    return true;
-	});
-
-	var readyStateCheckInterval = setInterval(function() {
-		if (document.readyState === "complete") {
-			clearInterval(readyStateCheckInterval);
-			main.load(main.page_start);
-		}
-	}, 100);
-
 /*************************************
 ## main obj literal
+* listen for toggle request
+* return status
 * retrieves watch list
 * generates CSS file 
 * attach or removes css
-* listen for toggle request
-* send icon command in response
 *************************************/
+
+
+	var readyStateCheckInterval = setInterval(function() {
+		if (document.readyState === "complete") {
+			console.log("ok");
+			clearInterval(readyStateCheckInterval);
+			chrome.runtime.onMessage.addListener(main.buttonPress);
+			setTimeout(function(){
+				main.load(main.start);
+			
+			}, 100);
+		}
+	}, 100);
 
 var main = {
 	watch_list:{},
@@ -33,39 +31,75 @@ var main = {
 	filter_name:'filter_list',
 	filters:[]
 };
+main.buttonPress = function(request, sender, callback){
+		if(request.cmd==='ping'){
+		console.log("ping");
+			callback(request.cmd);
+		}else{
+		console.log("ding");
+		console.log(request.cmd);
+			main[request.cmd](callback);
+		}
+};
 main.load = function(callback){
-		main.current_page = window.location.hostname;
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = handleStateChange;
-		xhr.open("GET", chrome.extension.getURL('/src/watch_list.json'), true);
-		xhr.send();
-		function handleStateChange(){
-			if (xhr.readyState === 4) {
-				main.watch_list = JSON.parse(xhr.responseText);
-				for(var i=0;i<main.watch_list.length;i++){
-					if(main.current_page.indexOf(main.watch_list[i].site)){
-						callback();
-						break;
+	try{
+			if(main.uid.length){console.log("!!!!");return false;}
+			console.log("loading");
+			main.current_page = window.location.href;
+			main.uid = 'nocomment--cbxjyzbgty_32LLoX7978a';
+			var xhr = new XMLHttpRequest();
+			xhr.onreadystatechange = handleStateChange;
+			xhr.open("GET", chrome.extension.getURL('/src/watch_list.json'), true);
+			xhr.send();
+			function handleStateChange(){
+				if (xhr.readyState === 4) {
+					main.watch_list = JSON.parse(xhr.responseText);
+					console.log(main.current_page);
+					for(var i=0;i<main.watch_list.length;i++){
+						console.log(main.watch_list[i].site);
+						if(main.current_page.indexOf(main.watch_list[i].site)){
+							console.log("watching "+main.watch_list[i].site);
+							callback();
+							break;
+						}
 					}
 				}
 			}
 
-		}
-
+	}catch(e){
+		console.log("error 0");
+		console.log(e);
+	}
+	
 }
-main.page_start = function(){
-	/* status == default hide || show ***********/
-	main.status = 'hide';
-	main.uid = Math.random().toString(36).slice(2);
+main.start = function(){
+	/* status == default active:hide comments || disabled:show ***********/
+	main.status = 'active';
+	console.log("start");
 	var matches = main.sync_site();
 	if(matches){
+		console.log("1-"+main.status);
 		main[main.status]();
+	}
+}
+main.clear = function(){
+	try{
+		console.log("clearing");
+		main.disabled();
+		chrome.runtime.onMessage.removeListener(main.buttonPress);
+		main = {};
+
+	}catch(e){
+		console.log(e);
 	}
 }
 main.sync_site = function(){
 	var current_page = main.current_page, key = 'site';
+	console.log(current_page);
 	var list = main.watch_list, res=[];
 	main.page_selectors = [];
+	console.log("syncing");
+	console.log(list);
 	for(var i in list){
 		if(current_page.indexOf(list[i][key]) > -1){
 			if(!filter(list[i][key], main.filters)){
@@ -74,6 +108,7 @@ main.sync_site = function(){
 			}
 		}
 	}
+	console.log(main.page_selectors);
 	function filter(needle, items){
 		for(var i=0;i<items.length;i++){
 			if(items[i].indexOf(needle) > -1){
@@ -85,48 +120,72 @@ main.sync_site = function(){
 	return res.length;
 }
 main.toggle = function(callback){
-	if(main.status !== 'hide'){
-		main.hide();
+	if(main.status !== 'active'){
+		main.active();
 		var val = 'active';
 	}else{
-		main.show();
+		main.disabled();
 		var val = 'disabled';
 	}
-
+console.log("toggling: " + val);
 	if(typeof callback === 'function'){
 		callback({cmd:val});
 	}
 }
-main.hide = function(callback){
-	main.status = 'hide';
-	var style = document.createElement('style');
-	style.type = 'text/css';
-	var rules = '';
-	for(var i=0;i<main.page_selectors.length;i++){
-		var selector = main.page_selectors[i];
-		var rule = selector + '{display:none;opacity:0;}';
-		rules += rule;
-	}
-	style.id='nocomment-'+main.uid;
-	style.setAttribute('id', style.id);
-	style.innerHTML = rules;
-	document.getElementsByTagName('head')[0].appendChild(style);
+main.active = function(callback){
+	try{
+		console.log("activate");
+		var sheet = document.getElementById(main.uid);
+		if(document.getElementsByTagName('body')[0].contains(sheet)){
+			console.log("zz??");
+		}
+		main.status = 'active';
+		var style = document.createElement('style');
+		var sheet = style.sheet;
+		style.type = 'text/css';
+		style.id=main.uid;
+		style.setAttribute('id', style.id);
+		var rules = '';
+		for(var i=0;i<main.page_selectors.length;i++){
+			var selector = main.page_selectors[i];
+			var rule = selector + '{display:none;}';
+			rules += rule;
+		}
+		console.log('add ' + style.id);
+		style.innerHTML = rules;
+		setTimeout(function(){
+			document.getElementsByTagName('body')[0].appendChild(style);	
+		},2500)
+		
 
-	if(typeof callback === 'function'){
-		var val = 'active';
-		callback({cmd:val});
+		if(typeof callback === 'function'){
+			var val = 'active';
+			callback({cmd:val});
+		}
+
+	}catch(e){
+		console.log("error 1");
+		console.log(e);
 	}
 }
-main.show = function(callback){
-	main.status = 'show';
-	var sheet = document.getElementById('nocomment-'+main.uid);
-	document.getElementsByTagName('head')[0].removeChild(sheet);
+main.disabled = function(callback){
+	try{
+		main.status = 'disabled';
+		var sheet = document.getElementById(main.uid);
+		document.getElementsByTagName('body')[0].removeChild(sheet);
 
-	if(typeof callback === 'function'){
-		var val = 'disabled';
-		callback({cmd:val});
+		console.log('remove ' + sheet.id);
+		if(typeof callback === 'function'){
+			var val = 'disabled';
+			callback({cmd:val});
+		}
+
+	}catch(e){
+		console.log("error 2");
+		console.log(e);
 	}
 }
+
 
 })();
 
