@@ -2,19 +2,18 @@
 (function(){
 /*************************************
 ## no comment background script
-* retrieves watch list
-* get filters from localstorage
+* retrieves watch list then
+* get user filters from localstorage
 * add listeners:
 	button click
-	tabs event
-		update, activate, removed
-	page request
-* on button press toggle icon send page request
-* tab updates apply local var if possible
-* toggles png's: active, disabled, icon19
+	tabs events: update, activate, removed
+* if site watched test known tabs 
+* ping test for content script inject if null
+* on button press toggle icon send content toggle
+* toggle thumbs: active.png, disabled.png, icon19.png
 *************************************/
 
-var watch_list = [], filter_name = 'filter_list', known_tabs=[], buffer=false;
+var watch_list = [], filter_name = 'filter_list', known_tabs=[];
 var next = function(){
 	chrome.browserAction.onClicked.addListener(handleButtonPress);
 	chrome.tabs.onUpdated.addListener(handleTabs);
@@ -46,6 +45,7 @@ function loadWatchList(callback){
 /*******************************/
 function handleButtonPress(){
 	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
+		console.log(tabs);
 		if(isWatched(tabs[0])){
 			toggle(tabs[0]);
 		}
@@ -57,45 +57,37 @@ function handleClosedTab(tabId, changeInfo, tab){
 }
 /******************************/
 function handleTabs(tabId, changeInfo, tab){
-	var tabKey = isNaN(tabId) ? tabId.tabId.toString() : tabId.toString();
-	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
-		if(isWatched(tabs[0])){
-			if(typeof changeInfo==='object' && changeInfo.status==='complete'){
-				if(!buffer){
-					buffer = true;
-					//todo - more efficient way to only execute once
-					chrome.tabs.sendMessage(tab.id, {cmd:'ping'}, function(res){
-						buffer = false;
-						if(res !== 'ping'){
-							console.log("injecting script");
-							chrome.tabs.executeScript(tabId.tabId, {file: "/src/inject/page.js"}, tabCheck);
-						}else{
-							tabCheck();
-						}
-					});
-				}
-			}
-		/********************************/
-		function tabCheck(){
-			if(typeof known_tabs[tabKey] === 'string'){
-				var tabStatus = known_tabs[tabKey];
-				chrome.browserAction.setIcon({path:"icons/"+tabStatus+".png"});
+	try{
+		var tabKey = isNaN(tabId) ? tabId.tabId.toString() : tabId.toString();
+		chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
+			if(isWatched(tabs[0])){
+				tab = tabs[0];
+				tabCheck(tabKey);
+				//todo - more efficient way to only execute once
+				chrome.tabs.sendMessage(tab.id, {cmd:'ping'}, function(res){
+					if(res !== 'ping'){
+						chrome.tabs.executeScript(tabId.tabId, {file: "/src/inject/page.js"});
+					}
+				});
 			}else{
-				chrome.browserAction.setIcon({path:"icons/active.png"});
-				var tabStatus = 'active';
-				known_tabs[tabKey] =  'active';
+				delete known_tabs[tabId.toString()];
+				chrome.browserAction.setIcon({path:"icons/icon19.png"});
 			}
-			//chrome.tabs.sendMessage(tab.id, {cmd:tabStatus});
-		}
-
-			/********************************/
-
-		}else{
-			delete known_tabs[tabId.toString()];
-			chrome.browserAction.setIcon({path:"icons/icon19.png"});
-		}
-
-	});
+		});
+	}catch(e){
+		return false;
+	}
+}		
+/********************************/
+function tabCheck(tabKey){
+	if(typeof known_tabs[tabKey] === 'string'){
+		var tabStatus = known_tabs[tabKey];
+		chrome.browserAction.setIcon({path:"icons/"+tabStatus+".png"});
+	}else{
+		chrome.browserAction.setIcon({path:"icons/active.png"});
+		var tabStatus = 'active';
+		known_tabs[tabKey] =  'active';
+	}
 }
 /*******************************/
 function toggle(tab){
@@ -104,11 +96,7 @@ function toggle(tab){
 	var cmd = status === 'active' ? 'disabled' : 'active';
 	known_tabs[tabKey] = cmd;
 	chrome.browserAction.setIcon({path:"icons/"+cmd+".png"});
-	chrome.tabs.sendMessage(tab.id, {cmd:cmd}, function(res){
-		if(typeof res !== 'undefined'){
-			console.log(res);
-		}
-	});
+	chrome.tabs.sendMessage(tab.id, {cmd:cmd});
 }
 /*******************************/
 function isWatched(obj){

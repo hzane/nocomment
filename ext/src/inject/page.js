@@ -10,17 +10,15 @@
 *************************************/
 
 
-	var readyStateCheckInterval = setInterval(function() {
-		if (document.readyState === "complete") {
-			console.log("ok");
-			clearInterval(readyStateCheckInterval);
-			chrome.runtime.onMessage.addListener(main.buttonPress);
-			setTimeout(function(){
-				main.load(main.start);
-			
-			}, 100);
-		}
-	}, 100);
+var readyStateCheckInterval = setInterval(function() {
+	if (document.readyState === "complete") {
+		clearInterval(readyStateCheckInterval);
+		chrome.runtime.onMessage.addListener(main.handleButton);
+		setTimeout(function(){
+			main.load(main.start);
+		}, 100);
+	}
+}, 100);
 
 var main = {
 	watch_list:{},
@@ -31,20 +29,16 @@ var main = {
 	filter_name:'filter_list',
 	filters:[]
 };
-main.buttonPress = function(request, sender, callback){
+main.handleButton = function(request, sender, callback){
 		if(request.cmd==='ping'){
-		console.log("ping");
 			callback(request.cmd);
 		}else{
-		console.log("ding");
-		console.log(request.cmd);
 			main[request.cmd](callback);
 		}
 };
 main.load = function(callback){
 	try{
-			if(main.uid.length){console.log("!!!!");return false;}
-			console.log("loading");
+			if(main.uid.length){return false;}
 			main.current_page = window.location.href;
 			main.uid = 'nocomment--cbxjyzbgty_32LLoX7978a';
 			var xhr = new XMLHttpRequest();
@@ -54,11 +48,8 @@ main.load = function(callback){
 			function handleStateChange(){
 				if (xhr.readyState === 4) {
 					main.watch_list = JSON.parse(xhr.responseText);
-					console.log(main.current_page);
 					for(var i=0;i<main.watch_list.length;i++){
-						console.log(main.watch_list[i].site);
 						if(main.current_page.indexOf(main.watch_list[i].site)){
-							console.log("watching "+main.watch_list[i].site);
 							callback();
 							break;
 						}
@@ -67,39 +58,22 @@ main.load = function(callback){
 			}
 
 	}catch(e){
-		console.log("error 0");
 		console.log(e);
 	}
 	
 }
 main.start = function(){
-	/* status == default active:hide comments || disabled:show ***********/
+	/* active:hide comments || disabled:show */
 	main.status = 'active';
-	console.log("start");
 	var matches = main.sync_site();
 	if(matches){
-		console.log("1-"+main.status);
-		main[main.status]();
-	}
-}
-main.clear = function(){
-	try{
-		console.log("clearing");
-		main.disabled();
-		chrome.runtime.onMessage.removeListener(main.buttonPress);
-		main = {};
-
-	}catch(e){
-		console.log(e);
+		main.active();
 	}
 }
 main.sync_site = function(){
 	var current_page = main.current_page, key = 'site';
-	console.log(current_page);
 	var list = main.watch_list, res=[];
 	main.page_selectors = [];
-	console.log("syncing");
-	console.log(list);
 	for(var i in list){
 		if(current_page.indexOf(list[i][key]) > -1){
 			if(!filter(list[i][key], main.filters)){
@@ -108,7 +82,6 @@ main.sync_site = function(){
 			}
 		}
 	}
-	console.log(main.page_selectors);
 	function filter(needle, items){
 		for(var i=0;i<items.length;i++){
 			if(items[i].indexOf(needle) > -1){
@@ -127,19 +100,17 @@ main.toggle = function(callback){
 		main.disabled();
 		var val = 'disabled';
 	}
-console.log("toggling: " + val);
 	if(typeof callback === 'function'){
 		callback({cmd:val});
 	}
 }
 main.active = function(callback){
 	try{
-		console.log("activate");
+		main.status = 'active';
 		var sheet = document.getElementById(main.uid);
 		if(document.getElementsByTagName('body')[0].contains(sheet)){
-			console.log("zz??");
+			return true;
 		}
-		main.status = 'active';
 		var style = document.createElement('style');
 		var sheet = style.sheet;
 		style.type = 'text/css';
@@ -151,20 +122,13 @@ main.active = function(callback){
 			var rule = selector + '{display:none;}';
 			rules += rule;
 		}
-		console.log('add ' + style.id);
 		style.innerHTML = rules;
-		setTimeout(function(){
-			document.getElementsByTagName('body')[0].appendChild(style);	
-		},2500)
-		
-
+		document.getElementsByTagName('body')[0].appendChild(style);
 		if(typeof callback === 'function'){
 			var val = 'active';
 			callback({cmd:val});
 		}
-
 	}catch(e){
-		console.log("error 1");
 		console.log(e);
 	}
 }
@@ -173,15 +137,11 @@ main.disabled = function(callback){
 		main.status = 'disabled';
 		var sheet = document.getElementById(main.uid);
 		document.getElementsByTagName('body')[0].removeChild(sheet);
-
-		console.log('remove ' + sheet.id);
 		if(typeof callback === 'function'){
 			var val = 'disabled';
 			callback({cmd:val});
 		}
-
 	}catch(e){
-		console.log("error 2");
 		console.log(e);
 	}
 }
