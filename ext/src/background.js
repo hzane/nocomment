@@ -11,6 +11,7 @@
 * ping test for content script inject if null
 * on button press toggle icon send content toggle
 * toggle thumbs: active.png, disabled.png, icon19.png
+
 *************************************/
 
 var watch_list = [], filter_name = 'filter_list', known_tabs=[];
@@ -45,15 +46,10 @@ function loadWatchList(callback){
 /*******************************/
 function handleButtonPress(){
 	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
-		console.log(tabs);
 		if(isWatched(tabs[0])){
 			toggle(tabs[0]);
 		}
 	});
-}
-/*******************************/
-function handleClosedTab(tabId, changeInfo, tab){
-	delete known_tabs[tabId.toString()];
 }
 /******************************/
 function handleTabs(tabId, changeInfo, tab){
@@ -61,9 +57,9 @@ function handleTabs(tabId, changeInfo, tab){
 		var tabKey = isNaN(tabId) ? tabId.tabId.toString() : tabId.toString();
 		chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
 			if(isWatched(tabs[0])){
-				tab = tabs[0];
-				tabCheck(tabKey);
+				iconCheck(tabKey);
 				//todo - more efficient way to only execute once
+				tab = tabs[0];
 				chrome.tabs.sendMessage(tab.id, {cmd:'ping'}, function(res){
 					if(res !== 'ping'){
 						chrome.tabs.executeScript(tabId.tabId, {file: "/src/inject/page.js"});
@@ -77,16 +73,22 @@ function handleTabs(tabId, changeInfo, tab){
 	}catch(e){
 		return false;
 	}
+}
+/*******************************/
+function handleClosedTab(tabId, changeInfo, tab){
+	delete known_tabs[tabId.toString()];
 }		
 /********************************/
-function tabCheck(tabKey){
+function iconCheck(tabKey){
 	if(typeof known_tabs[tabKey] === 'string'){
 		var tabStatus = known_tabs[tabKey];
 		chrome.browserAction.setIcon({path:"icons/"+tabStatus+".png"});
+		return true;
 	}else{
 		chrome.browserAction.setIcon({path:"icons/active.png"});
 		var tabStatus = 'active';
 		known_tabs[tabKey] =  'active';
+		return false;
 	}
 }
 /*******************************/
@@ -113,6 +115,9 @@ function isWatched(obj){
 		}
 		return false;
 		function filter(url,filters){
+			/*todo: make this more robust  */
+			var end = url.indexOf("/") > -1 ? url.indexOf("/") : url.length;
+			url = url.substring(0,end);
 			for(var i=0;i<filters.length;i++){
 				if(filters[i].indexOf(url) > -1){
 					return true;
