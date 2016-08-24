@@ -20,7 +20,8 @@ var sites = ["youtube.com",
 			"imgur.com",
 			"mashable.com",
 			"gawker.com",
-			"theguardian.com"];
+			"theguardian.com",
+			"gothamist.com"];
 
 var filter_name = 'filter_list';
 
