@@ -14,7 +14,7 @@
 
 *************************************/
 
-var watch_list = [], filter_name = 'filter_list', known_tabs=[];
+var watch_list = [], filter_name = 'filter_list', known_tabs={};
 var next = function(){
 	chrome.browserAction.onClicked.addListener(handleButtonPress);
 	chrome.tabs.onUpdated.addListener(handleTabs);
@@ -23,7 +23,7 @@ var next = function(){
 	chrome.runtime.onMessage.addListener(messageHandler);
 };
 
-loadWatchList(next);
+init(next);
 
 /*******************************/
 function messageHandler(request, sender, sendResponse) {
@@ -31,7 +31,7 @@ function messageHandler(request, sender, sendResponse) {
 			chrome.browserAction.setIcon({path:"icons/"+request.cmd+".png"});
 		}
 }
-function loadWatchList(callback){
+function init(callback){
 	var xhr = new XMLHttpRequest();
 	xhr.onreadystatechange = handleStateChange;
 	xhr.open("GET", chrome.extension.getURL('/src/watch_list.json'), true);
@@ -42,11 +42,15 @@ function loadWatchList(callback){
 			callback();
 		}
 	}
+	//chrome.storage.onChanged.addListener(function(changes, namespace) {});
 }
 /*******************************/
 function handleButtonPress(){
+	console.log("1");
 	chrome.tabs.query({'active':true,'lastFocusedWindow':true,'currentWindow':true}, function(tabs){
+		console.log("2");
 		if(isWatched(tabs[0])){
+			console.log("3");
 			toggle(tabs[0]);
 		}
 	});
@@ -87,15 +91,15 @@ function iconCheck(tabKey){
 	}else{
 		chrome.browserAction.setIcon({path:"icons/active.png"});
 		var tabStatus = 'active';
-		known_tabs[tabKey] =  'active';
 		return false;
 	}
 }
 /*******************************/
 function toggle(tab){
+	console.log("4");
 	var tabKey = tab.id.toString();
 	var status = known_tabs[tabKey];
-	var cmd = status === 'active' ? 'disabled' : 'active';
+	var cmd = status === 'disabled' ? 'active' : 'disabled';
 	known_tabs[tabKey] = cmd;
 	chrome.browserAction.setIcon({path:"icons/"+cmd+".png"});
 	chrome.tabs.sendMessage(tab.id, {cmd:cmd});
