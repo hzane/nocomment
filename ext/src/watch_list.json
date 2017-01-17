@@ -29,5 +29,6 @@
 {"site":"reddit.com","selector":".commentarea"},
 {"site":"instagram.com","selector":"._es1du._rgrbt"},
 {"site":"mashable.com","selector":".load-comments"},
-{"site":"mashable.com","selector":".article-comments"}
+{"site":"mashable.com","selector":".article-comments"},
+{"site":"gothamist.com","selector":".comments-content"}
 ]
